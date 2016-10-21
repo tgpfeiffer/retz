@@ -54,13 +54,13 @@ public class Database {
         return database;
     }
 
-    static Database newMemInstance(String name) throws IOException {
+    static Database newMemInstance(String name) throws IOException, SQLException {
         Database db = new Database();
         db.initOnMem(name);
         return db;
     }
 
-    public void init(FileConfiguration config) throws IOException {
+    public void init(FileConfiguration config) throws IOException, SQLException {
         databaseURL = Objects.requireNonNull(config.getDatabaseURL());
         LOG.info("Initializing database {}", databaseURL);
 
@@ -91,7 +91,7 @@ public class Database {
         }
     }
 
-    void initOnMem(String name) throws IOException {
+    void initOnMem(String name) throws IOException, SQLException {
         PoolProperties props = new PoolProperties();
         databaseURL = "jdbc:h2:mem:" + name + ";DB_CLOSE_DELAY=-1";
         props.setUrl(databaseURL);
@@ -99,7 +99,7 @@ public class Database {
         init(props, false);
     }
 
-    private void init(PoolProperties props, boolean enableJmx) throws IOException {
+    private void init(PoolProperties props, boolean enableJmx) throws IOException, SQLException {
         props.setValidationQuery("select 1;");
         props.setJmxEnabled(enableJmx);
 
@@ -116,8 +116,6 @@ public class Database {
             }
             maybeCreateTables(conn);
             conn.commit();
-        } catch (SQLException e) {
-            LOG.error(e.toString());
         }
     }
 
@@ -127,10 +125,12 @@ public class Database {
         while (dataSource.getNumActive() > 0) {
             try {
                 Thread.sleep(512);
+                LOG.info("Stopping database: active/idle ={}/{}", dataSource.getNumActive(), dataSource.getNumIdle());
             } catch (InterruptedException e) {
             }
         }
         dataSource.close();
+        LOG.info("Stopped database");
     }
 
     public void clear() {
@@ -141,6 +141,7 @@ public class Database {
             LOG.info("All tables dropped successfully");
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
     }
 
@@ -213,25 +214,23 @@ public class Database {
             }
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
         return ret;
     }
 
     // Maybe this must return Optional<User> ?
-    public User createUser() throws RuntimeException {
+    public User createUser() throws SQLException {
 
         String keyId = UUID.randomUUID().toString().replace("-", "");
         String secret = UUID.randomUUID().toString().replace("-", "");
         User u = new User(keyId, secret, true);
         LOG.info("new (key_id, secret) = ({}, {})", keyId, secret);
-        if (addUser(u)) {
-            return u;
-        } else {
-            throw new RuntimeException("Couldn't create user " + keyId);
-        }
+        addUser(u);
+        return u;
     }
 
-    public boolean addUser(User u) {
+    public boolean addUser(User u) throws SQLException {
         //try (Connection conn = DriverManager.getConnection(databaseURL)) {
         try (Connection conn = dataSource.getConnection(); //pool.getConnection();
              PreparedStatement p = conn.prepareStatement("INSERT INTO users(key_id, secret, enabled) values(?, ?, ?)")) {
@@ -242,11 +241,6 @@ public class Database {
             p.setBoolean(3, true);
             p.execute();
             return true;
-        } catch (SQLException e) {
-            for (Throwable t : e) {
-                LOG.error(t.toString());
-            }
-            return false;
         }
     }
 
@@ -259,6 +253,7 @@ public class Database {
             return u;
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
             return Optional.empty();
         }
     }
@@ -301,6 +296,7 @@ public class Database {
             conn.commit();
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
         return ret;
     }
@@ -351,6 +347,7 @@ public class Database {
 
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
             return false;
         }
     }
@@ -361,6 +358,7 @@ public class Database {
             return getApplication(conn, appid);
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
         return Optional.empty();
     }
@@ -396,6 +394,7 @@ public class Database {
             conn.commit();
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
     }
 
@@ -433,6 +432,7 @@ public class Database {
             }
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
         return ret;
     }
@@ -461,6 +461,7 @@ public class Database {
             }
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
         return ret;
     }
@@ -492,6 +493,7 @@ public class Database {
             }
         } catch (SQLException e) {
             LOG.error(e.toString());
+            e.printStackTrace();
         }
         return ret;
     }

@@ -30,7 +30,6 @@ import java.net.URISyntaxException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.StringJoiner;
 
 // TODO: Most of items here have become server-specific. Move them out of common to server with proper abstraction
 public class FileConfiguration {
@@ -65,7 +64,7 @@ public class FileConfiguration {
 
     // Persistence
     static final String DATABASE_URL = "retz.database.url";
-    static final String DEFAULT_DATABASE_URL = "jdbc:h2:mem:retz-server;DB_CLOSE_DELAY=-1";
+    public static final String DEFAULT_DATABASE_URL = "jdbc:h2:mem:retz-server;DB_CLOSE_DELAY=-1";
     static final String DATABASE_DRIVER_CLASS = "retz.database.driver";
     static final String DEFAULT_DATABASE_DRIVER_CLASS = "org.h2.Driver";
     static final String DATABASE_USERNAME = "retz.database.user";

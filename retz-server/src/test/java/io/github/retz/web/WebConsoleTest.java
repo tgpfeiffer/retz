@@ -56,6 +56,7 @@ public class WebConsoleTest {
      */
     @Before
     public void setUp() throws Exception {
+
         Protos.FrameworkInfo frameworkInfo = Protos.FrameworkInfo.newBuilder()
                 .setUser("")
                 .setName(RetzScheduler.FRAMEWORK_NAME)
@@ -76,10 +77,9 @@ public class WebConsoleTest {
         webConsole = new WebConsole(config);
         WebConsole.setScheduler(scheduler);
         awaitInitialization();
+
         Database.getInstance().init(config);
 
-        System.err.println(config.authenticationEnabled());
-        System.err.println(config.toString());
         webClient = Client.newBuilder(config.getUri()).
                 enableAuthentication(config.authenticationEnabled())
                 .setAuthenticator(config.getAuthenticator())
@@ -96,7 +96,7 @@ public class WebConsoleTest {
     public void tearDown() throws Exception {
         webClient.close();
         webConsole.stop();
-        JobQueue.clear();
+        Database.getInstance().clear();
         Database.getInstance().stop();
     }
 
@@ -113,11 +113,10 @@ public class WebConsoleTest {
 
     @Test
     public void loadApp() throws Exception {
-        JobQueue.clear();
         {
             String[] files = {"http://example.com:234/foobar/test.tar.gz"};
             Application app = new Application("foobar", new LinkedList<>(), new LinkedList<String>(), Arrays.asList(files),
-                    Optional.empty(), Optional.empty(), "deadbeef", new MesosContainer(), true);
+                    Optional.empty(), Optional.empty(), config.getUser().keyId(), new MesosContainer(), true);
             Response res = webClient.load(app);
             assertThat(res, instanceOf(LoadAppResponse.class));
             assertThat(res.status(), is("ok"));
@@ -138,7 +137,6 @@ public class WebConsoleTest {
 
     @Test
     public void schedule() throws Exception {
-        JobQueue.clear();
         List<Job> maybeJob = JobQueue.findFit(10000, 10000);
         assertTrue(maybeJob.isEmpty());
 
@@ -158,7 +156,7 @@ public class WebConsoleTest {
         {
             String[] files = {"http://example.com:234/foobar/test.tar.gz"};
             Application app = new Application("foobar", new LinkedList<>(), new LinkedList<String>(), Arrays.asList(files),
-                    Optional.empty(), Optional.empty(), "deadbeef", new MesosContainer(), true);
+                    Optional.empty(), Optional.empty(), config.getUser().keyId(), new MesosContainer(), true);
             Response res = webClient.load(app);
             System.err.println(res.status());
             assertThat(res, instanceOf(LoadAppResponse.class));
@@ -248,10 +246,8 @@ public class WebConsoleTest {
 
     @Test
     public void status() throws Exception {
-        User user = new User("deadbeef", "cafebabe", true);
-        Database.getInstance().addUser(user);
         Application app = new Application("fooapp", Arrays.asList(), Arrays.asList(), Arrays.asList(),
-                Optional.empty(), Optional.empty(), user.keyId(), new MesosContainer(), true);
+                Optional.empty(), Optional.empty(), config.getUser().keyId(), new MesosContainer(), true);
         Database.getInstance().addApplication(app);
         Job job = new Job(app.getAppid(), "foocmd", null, 12000, 12000);
         JobQueue.push(job);
