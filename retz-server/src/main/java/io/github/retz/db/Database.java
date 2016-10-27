@@ -614,7 +614,7 @@ public class Database {
         }
     }
 
-    public void setJobStarting(int id, Optional<String> maybeUrl, String taskId) {
+    public void setJobStarting(int id, Optional<String> maybeUrl, String taskId) throws IOException, SQLException, JobNotFoundException {
         updateJob(id, job -> {
             job.starting(taskId, maybeUrl, TimestampHelper.now());
             LOG.info("TaskId of id={}: {} / {}", id, taskId, job.taskId());
@@ -622,7 +622,7 @@ public class Database {
         });
     }
 
-    public void updateJob(int id, Function<Job, Optional<Job>> fun) {
+    public void updateJob(int id, Function<Job, Optional<Job>> fun) throws IOException, SQLException, JobNotFoundException {
         try (Connection conn = dataSource.getConnection(); //pool.getConnection();
              PreparedStatement p = conn.prepareStatement("SELECT json FROM jobs WHERE id=?")) {
             conn.setAutoCommit(false);
@@ -639,13 +639,9 @@ public class Database {
                         LOG.info("Job (id={}) status updated to {}", job.id(), job.state());
                     }
                 } else {
-                    LOG.warn("No such job: id={}", id);
+                    throw new JobNotFoundException(id);
                 }
-            } catch (IOException e) {
-                LOG.error(e.toString());
             }
-        } catch (SQLException e) {
-            LOG.error(e.toString());
         }
     }
 
